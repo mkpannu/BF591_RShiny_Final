@@ -1,0 +1,39 @@
+---
+title: "Final Project Report"
+author: "Mahek Pannu"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+sample_stats <- read.csv("data/sample_statistics.csv") 
+sample_stats$Condition <- as.factor(sample_stats$Condition)
+head(sample_stats)
+```
+```{r}
+p <- filter(sample_stats, Condition == "HD") %>%
+  drop_na() %>%
+  ggplot() +
+  geom_density(aes(x=PMI, fill=Condition))
+p
+```
+
+
+
+
+```{r}
+norm_counts <- read.csv("data/GSE64810_norm_counts.csv")
+head(norm_counts)
+```
+
+
+```{r}
+DESeq2_res <- read.csv("data/GSE64810_DESeq2_results.csv")
+head(DESeq2_res)
+```
+
