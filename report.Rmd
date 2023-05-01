@@ -8,6 +8,9 @@ output: html_document
 library(dplyr)
 library(tidyverse)
 library(ggplot2)
+library('RColorBrewer')
+library(GSA)
+library(data.table)
 ```
 
 ```{r}
@@ -30,10 +33,79 @@ p
 norm_counts <- read.csv("data/GSE64810_norm_counts.csv")
 head(norm_counts)
 ```
+```{r}
+fltr_df <- norm_counts
+length_samples <- length(colnames(fltr_df))
+fltr_df$vars <- apply(fltr_df[-1], 1, var)
+fltr_df$zero_sum <- apply(fltr_df[-1] == 0, 1, sum) 
+fltr_df$filter <- as.logical(ifelse((fltr_df$vars > quantile(fltr_df$vars, .50)) == TRUE & (fltr_df$zero_sum < (length_samples - 2)) == TRUE, TRUE, FALSE))
+length(fltr_df$gene)
+```
+
+```{r}
+ht_df <- filter(fltr_df, filter==TRUE)[2:70] %>%
+  as.matrix()
+rownames(ht_df) <- filter(fltr_df, filter==TRUE)$gene
+ht_map <- heatmap(ht_df, col = brewer.pal(n = 11, name = "RdBu"))
+```
+
+```{r}
+p_df$median_count <- apply(norm_counts[-1], 1)
+```
 
 
 ```{r}
 DESeq2_res <- read.csv("data/GSE64810_DESeq2_results.csv")
 head(DESeq2_res)
 ```
+```{r}
+fltr_df <- filter(DESeq2_res, padj < 10^-10) %>%
+  mutate(across(baseMean:stat, ~ round(., 4)))
+fltr_df$padj <- format(fltr_df$padj)
+fltr_df$pvalue <- format(fltr_df$pvalue) 
+fltr_df
+```
+```{r}
+gene_list <- fgsea_res %>%
+    pull(gene)
+human <- useMart("ensembl",host="https://apr2018.archive.ensembl.org", dataset = "hsapiens_gene_ensembl")
+mouse <- useMart("ensembl",host="https://apr2018.archive.ensembl.org", dataset = "mmusculus_gene_ensembl")
+gene_lookup <- getLDS (attributes = c("ensembl_gene_id", "mgi_symbol"),
+                       filters = "ensembl_gene_id",
+                       values = gene_list,
+                       mart = mouse,
+                       attributesL = c ("hgnc_symbol"),
+                       martL = human,
+                       uniqueRows = T) %>% 
+  as_tibble()
+```
+
+```{r}
+DESeq2_res <- DESeq2_res %>%
+  separate(gene, c('gene'), sep = '\\.', extra = 'drop') %>%
+  arrange(desc(log2FoldChange))
+
+geneset <- GSA.read.gmt('data/c2.cp.v7.5.1.symbols.gmt')
+pathways_fgsea <- fgsea::gmtPathways('data/c2.cp.v7.5.1.symbols.gmt')
+ranked_list <- setNames(DESeq2_res$log2FoldChange, DESeq2_res$symbol)
+fgsea_results <- fgsea(pathways_fgsea, na.omit(ranked_list), minSize = 15, maxSize=500)
+fgsea_results <- fgsea_results %>% as_tibble() %>%
+  arrange(padj)
+head(fgsea_results)
+fwrite(fgsea_results, file="fgsea_results.csv", sep=",", sep2=c("", " ", ""))
+```
+```{r}
+fgsea_results <- read.csv("data/fgsea_results.csv")
+
+
+p_df <- fgsea_results
+p_df$label <- fgsea_results$padj < 10^-2
+p <- ggplot(p_df, mapping=aes(x=NES, y=-log10(padj))) + 
+  geom_point(mapping=aes(color=padj<10^(-2))) + 
+      scale_color_manual(values = c("#652CBA", "#FFCF56"))
+p
+```
+
+
+
 

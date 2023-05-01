@@ -15,7 +15,7 @@ library(colourpicker)
 # Define UI for application that draws a histogram
 ui <- fluidPage(
   tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+    tags$link(rel = "stylesheet", type = "text/css", href = "bootstrap.css")
   ),
   titlePanel(h1("BF591 Final Project")),
   sidebarLayout(
@@ -89,6 +89,21 @@ server <- function(input, output, session) {
     return(summary)
   }
   
+  
+  HD_control <- function(data, col){
+    p <- ggplot(data) +
+      geom_violin(aes(x=Condition,y=!!sym(col),fill=Condition))
+    return(p)
+  }
+  
+  HD_plot <- function(data, col){
+    p <- filter(data, Condition == "HD") %>%
+      drop_na() %>%
+      ggplot() +
+      geom_density(aes(x=!!sym(col), fill=Condition))
+    return(p)
+  }
+  
   output$summarystats <- DT::renderDataTable(
     DT::datatable(create_summary(load_data_sample()), 
                   class = "display",
@@ -110,19 +125,6 @@ server <- function(input, output, session) {
                     )
     )
   
-  HD_control <- function(data, col){
-    p <- ggplot(data) +
-      geom_violin(aes(x=Condition,y=!!sym(col),fill=Condition))
-    return(p)
-  }
-  
-  HD_plot <- function(data, col){
-    p <- filter(data, Condition == "HD") %>%
-      drop_na() %>%
-      ggplot() +
-      geom_density(aes(x=!!sym(col), fill=Condition))
-    return(p)
-  }
   
   output$HD_control_plot <- renderPlotly({
     input$sample_HDC_plot
