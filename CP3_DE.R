@@ -3,22 +3,21 @@
 ## BU BF591
 ## Final Project
 
-# Welcome to R Shiny. All that glitters is not gold.
 library(shiny)
 library(ggplot2)
 library(dplyr)
 library(DT)
 library(tidyverse)
 library(plotly)
-library(colourpicker) # you might need to install this.
+library(colourpicker)
+source("helper.R")
 
 
-# Define UI for application that draws a histogram
 ui <- fluidPage(
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "bootstrap.css")
   ),
-  titlePanel(h1("BF591 Assignment 7")),
+  titlePanel(h1("BF591 Final Project")),
   sidebarLayout(
     sidebarPanel(
       fileInput("deseq2_results", paste0("Load differential expression results"),  placeholder = "GSE64810_DESeq2_results.csv", accept='.csv'),
@@ -39,52 +38,38 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output, session) {
-  
   load_deseq2 <- reactive({
     input$deseq2_results
     isolate({
       # Change this when submitting
-      #deseq2_results <- read.csv(input$sample_stats$datapath)
-      deseq2_results <- read.csv("data/GSE64810_DESeq2_results.csv")
+      deseq2_results <- read.csv(input$deseq2_results$datapath)
+      #deseq2_results <- read.csv("data/GSE64810_DESeq2_results.csv")
       return(deseq2_results)
     })
   })
- 
-  plot_deseq_res <- function(deseq2_results, x_name, y_name, slider, color1, color2) {
-    p_df <- drop_na(deseq2_results) 
-    p <- ggplot(p_df, mapping=aes(x=!!sym(x_name), y=-log10(as.numeric(!!sym((y_name)))))) +
-      geom_point(size=1, aes(color=(!!sym(y_name) < (10^slider)))) + 
-      scale_colour_manual(name = paste0(y_name, ' < 1e', slider), values = setNames(c(color1,color2),c(F, T))) 
-    return(p)
-  }
-
-  draw_table_deseq2 <- function(deseq2_results, slider_padj) {
-    fltr_df <- filter(deseq2_results, padj < 10^slider_padj) %>%
-      mutate(across(baseMean:stat, ~ round(., 4)))
-    fltr_df$padj <- format(fltr_df$padj)
-    fltr_df$pvalue <- format(fltr_df$pvalue) 
-    return(fltr_df)
-  }
   
-  output$deseq2_plot <- renderPlotly({
-    input$render_deseq2
-    isolate({
-      plot_deseq_res(load_deseq2(), input$DE_x, input$DE_y, input$DE_slider_padj, input$DE_base, input$DE_highlight)
+  observeEvent(input$render_deseq2, {
+    output$deseq2_plot <- renderPlotly({
+      input$render_deseq2
+      isolate({
+        plot_deseq_res(load_deseq2(), input$DE_x, input$DE_y, input$DE_slider_padj, input$DE_base, input$DE_highlight)
+      })
     })
   })
   
-  output$deseq2_table <- DT::renderDataTable(
-    DT::datatable(draw_table_deseq2(load_deseq2(), input$DE_slider_padj),
-                  class = "display",
-                  options = list(paging = TRUE, 
-                                 fixedColumns = TRUE, 
-                                 ordering = TRUE, 
-                                 dom = 'Brtip'
-                  )
+  observeEvent(input$render_deseq2, {
+    output$deseq2_table <- DT::renderDataTable(
+      DT::datatable(isolate(draw_table_deseq2(load_deseq2(), input$DE_slider_padj)),
+                    class = "display",
+                    options = list(paging = TRUE, 
+                                   fixedColumns = TRUE, 
+                                   ordering = TRUE, 
+                                   dom = 'Brtip'
+                    )
+      )
     )
-  )
+  })
 }
 
 # Run the application

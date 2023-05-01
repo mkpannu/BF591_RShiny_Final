@@ -10,7 +10,7 @@ library(DT)
 library(tidyverse)
 library(plotly)
 library(colourpicker) 
-
+source("helper.R")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -55,7 +55,6 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output, session) {
   load_data_sample <- reactive({
     input$render_sample
@@ -68,75 +67,47 @@ server <- function(input, output, session) {
     })
   })
   
-  create_summary <- function(df){
-    summary <- tibble(ColumnName=colnames(df), Type="", Values="")
-    for(i in 1:length(colnames(df))){
-      summary[i,2] <- class(df[[i]])
-      if (summary[i,2] == "character"){
-        summary[i,3] <- paste(df[[i]], collapse = ", ")
-      }
-      else if (summary[i,2] == "integer" || summary[i,2] == "numeric"){
-        t <- c(mean(df[[i]], na.rm = TRUE), sd(df[[i]], na.rm = TRUE))
-        summary[i,3] <- paste(t, collapse = " +/- ")
-      }
-      else if (summary[i,2] == "factor"){
-        summary[i,3] <- paste(levels(df[[i]]), collapse = ", ")
-      }
-      else {
-        summary[i,3] <- NULL
-      }
-    }
-    return(summary)
-  }
-  
-  
-  HD_control <- function(data, col){
-    p <- ggplot(data) +
-      geom_violin(aes(x=Condition,y=!!sym(col),fill=Condition))
-    return(p)
-  }
-  
-  HD_plot <- function(data, col){
-    p <- filter(data, Condition == "HD") %>%
-      drop_na() %>%
-      ggplot() +
-      geom_density(aes(x=!!sym(col), fill=Condition))
-    return(p)
-  }
-  
-  output$summarystats <- DT::renderDataTable(
-    DT::datatable(create_summary(load_data_sample()), 
-                  class = "display",
-                  options = list(paging = FALSE, 
-                                 fixedColumns = TRUE, 
-                                 ordering = TRUE, 
-                                 dom = 'Brtip'
-                            )
-                  )
-    )
-  output$sample_table <- DT::renderDataTable(
-    DT::datatable(load_data_sample(), 
-                  class = "display",
-                  options = list(paging = FALSE, 
-                                 fixedColumns = TRUE, 
-                                 ordering = TRUE, 
-                                 dom = 'Brtip'
-                            )
+  observeEvent(input$render_sample, {
+    output$summarystats <- DT::renderDataTable(
+      DT::datatable(create_summary(load_data_sample()), 
+                    class = "display",
+                    options = list(paging = FALSE, 
+                                   fixedColumns = TRUE, 
+                                   ordering = TRUE, 
+                                   dom = 'Brtip'
                     )
+      )
     )
+  })
   
+  observeEvent(input$render_sample, {
+    output$sample_table <- DT::renderDataTable(
+      DT::datatable(load_data_sample(), 
+                    class = "display",
+                    options = list(paging = FALSE, 
+                                   fixedColumns = TRUE, 
+                                   ordering = TRUE, 
+                                   dom = 'Brtip'
+                    )
+      )
+    )
+  })
   
-  output$HD_control_plot <- renderPlotly({
-    input$sample_HDC_plot
-    isolate({
-      HD_control(load_data_sample(), input$samp_var)
+  observeEvent(input$sample_HDC_plot, {
+    output$HD_control_plot <- renderPlotly({
+      input$sample_HDC_plot
+      isolate({
+        HD_control(load_data_sample(), input$samp_var)
+      })
     })
   })
   
-  output$HD_plot <- renderPlotly({
-    input$sample_HD_plot
-    isolate({
-      HD_plot(load_data_sample(), input$HD_var)
+  observeEvent(input$sample_HD_plot, {
+    output$HD_plot <- renderPlotly({
+      input$sample_HD_plot
+      isolate({
+        HD_plot(load_data_sample(), input$HD_var)
+      })
     })
   })
 }
