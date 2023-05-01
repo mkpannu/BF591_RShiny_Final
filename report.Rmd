@@ -96,14 +96,12 @@ fwrite(fgsea_results, file="fgsea_results.csv", sep=",", sep2=c("", " ", ""))
 ```
 ```{r}
 fgsea_results <- read.csv("data/fgsea_results.csv")
+#head(fgsea_results)
+#dplyr::mutate(leadingEdge = gsub(" ", ", ", leadingEdge))
+#strsplit(fgsea_results$leadingEdge[1], " ")[[1]]
 
-
-p_df <- fgsea_results
-p_df$label <- fgsea_results$padj < 10^-2
-p <- ggplot(p_df, mapping=aes(x=NES, y=-log10(padj))) + 
-  geom_point(mapping=aes(color=padj<10^(-2))) + 
-      scale_color_manual(values = c("#652CBA", "#FFCF56"))
-p
+fgsea_results$leadingEdge <- apply(fgsea_results, 1, function(x) strsplit(x[8], " ")[[1]])
+#head(fgsea_results$leadingEdge)
 ```
 
 
